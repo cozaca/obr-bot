@@ -4,9 +4,9 @@
   "description": "One button release conversational bot",
   "main": "/dist/index.js",
   "scripts": {
-    "dev": "NODE_ENV=development babel-node src/index.js",
-    "build": "rm -rf ./dist/ && babel src --out-dir dist/ --copy-files",
-    "prod": "NODE_ENV=production node dist/index.js",
+    "dev": "SET NODE_ENV=development babel-node src/index.js",
+    "build": "del -rf .\\dist\\ && babel src --out-dir dist/ --copy-files",
+    "prod": "SET NODE_ENV=production node dist/index.js",
     "lint": "eslint src"
   },
   "repository": {
