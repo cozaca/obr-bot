@@ -2,15 +2,18 @@
   "name": "obr-bot",
   "version": "1.0.0",
   "description": "One button release conversational bot",
-  "main": "index.js",
+  "main": "/dist/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "NODE_ENV=development babel-node src/index.js",
+    "build": "rm -rf ./dist/ && babel src --out-dir dist/ --copy-files",
+    "prod": "NODE_ENV=production node dist/index.js",
+    "lint": "eslint src"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/cozaca/obr-bot.git"
   },
-  "author": "",
+  "author": "adrian cozac",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/cozaca/obr-bot/issues"
