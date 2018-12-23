@@ -1,5 +1,5 @@
 import express from 'express'
-import { log } from './utils'
+import { log } from './/utils'
 
 const router = new express.Router();
 

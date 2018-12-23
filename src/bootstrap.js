@@ -1,12 +1,12 @@
 import bodyParser from 'body-parser';
-import {log} from './utils';
-import routes from './routes';
+import {log} from './/utils';
+import router from './/route';
 
 export default function (app) {
     app.use(bodyParser.json());
     app.use(bodyParser.urlencoded({ extended: true}));
 
-    app.use(routes);
+    app.use(router);
 
     app.use((req, res) => {
         res.status(404).send({

@@ -1,9 +1,9 @@
 import 'babel-polyfill';
 import config from 'config';
 import express from 'express';
-import https from 'http';
-import bootstrap from './bootstrap';
-import {log, normalizePort} from './utils';
+import http from 'http';
+import bootstrap from './/bootstrap';
+import {log, normalizePort} from './/utils';
 
 const app = express()
 
