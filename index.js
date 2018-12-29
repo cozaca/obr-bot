@@ -87,14 +87,31 @@ controller.on('bot_channel_join', function (bot, message) {
     bot.reply(message, "I'm here! I'm eager to release something. Pls let me know when you are ready.")
 });
 
-controller.hears('hello', 'direct_message', function (bot, message) {
+controller.hears('hello', ["direct_message", "direct_mention"], function (bot, message) {
     bot.reply(message, 'Houdy! How can I help you?');
+});
+
+controller.hears(['pls tell something about you',
+                  'pls tell me',
+                  'give me some info about OBR',
+                  'obr',
+                  'what can you do',
+                  'help'], ["direct_message", "direct_mention"], function (bot, message) {
+    bot.reply(message, 'Houdy! I am the OBR bot. My name is R-bot. I can release whatever extension you want if you follow two basic steps.\n'+
+                        '*1*. Make sure that you have applied obr pipeline to your extension. If you don\'t have that please do so following\n'+
+                        '     the steps from this page: https://itivitinet.itiviti.com/pages/viewpage.action?pageId=156109745 \n'+
+                        '*2*. If you want to release you can simply tell me what to do by: \n' +
+                        '     pls release extension (`your extension`) with version (`version to be released`) as (`release status`) from branch (`branch to be released`) \n'+
+                        '     with jira (`product jira key`) and optionally you can skip integration test by typing `ignoring` integration test.\n' +
+                        'For example a valid directive for me would be: \n' +
+                        '`pls release extension *(ul-middle)* with version *(3.5.7_00)* as *(Internal)* from branch *(3.5.7)* with jira *(MIDL)* ignoring integration test`');
 });
 
 controller.hears([`pls release`,
                   "please release",
-                  "could you please release"], 
-                   ["direct_message", "message.channels"], function(bot, message) {
+                  "could you please release",
+                  "release"],
+                   ["direct_message", "direct_mention"], function(bot, message) {
                        
 
     var textMessage = message.text
@@ -102,10 +119,13 @@ controller.hears([`pls release`,
     var projectKey = new String(message.text).match(/(?<=jira \()(.*?)(?=\s*\))/)[0];
     var projectVersion = new String(message.text).match(/(?<=version \()(.*?)(?=\s*\))/)[0];
     var branch = new String(message.text).match(/(?<=branch \()(.*?)(?=\s*\))/)[0];
+    var skipIntegrationTest = /ignoring/.test(message.text) || /ignore/.test(message.text) || /skip/.test(message.text) || /skipping/.test(message.test);
+    var aliasRpd = new String(message.text).match(/(?<=as \()(.*?)(?=\s*\))/)[0];
+    var releaseProductStatus = getReleaseProductStatusByAlias(aliasRpd);
 
     var jobName = `${jenkinsKey}-releases`;
     if(config.mode === 'uat') {
-        jobName = 'obr-test'
+        jobName = config.jobName
     }
 
     console.info(`JobName = ${jobName}`)
@@ -113,20 +133,50 @@ controller.hears([`pls release`,
     if(projectKey === null || projectKey === '') {
         projectKey = new String(message.text).match(/(?<=jira key \()(.*?)(?=\s*\))/);
     }
-  
-   console.info(`message is ${textMessage} \n jenkinsKey = ${jenkinsKey}, projectKey = ${projectKey}, projectVersion = ${projectVersion}, branch = ${branch}`)
 
-   var { http, urlRoute } = triggerJenkinsJob(projectKey, projectVersion, jenkinsKey, branch, jobName);
-
-   http.onreadystatechange=(e)=>{
-    console.log(`response text: ${http.responseText}`)
-    }
-    bot.reply(message, `Sure, release is started. Pls follow the link below from futher information ${urlRoute}. BTW don't worry is in UAT.`);
+    console.info(`message is ${textMessage} \n jenkinsKey = ${jenkinsKey}, projectKey = ${projectKey}, projectVersion = ${projectVersion}, branch = ${branch}, releaseStatus = ${aliasRpd}`)
+    var shouldTriggerJob = projectKey && projectVersion && jenkinsKey && branch && releaseProductStatus;
+    if(!shouldTriggerJob)
+    {
+        var rejectText = `At least one of the following mandatory fields are not provided: *projectKey*, *projectVersion*, *jenkinsKey*, *branch* or *releaseProduct status*.\n Pls make sure that you provide all necessary information`;
+        console.info(rejectText);
+       bot.reply(message, rejectText);
+    } else {
+    
+        var { http, urlRoute } = triggerJenkinsJob(projectKey, projectVersion, jenkinsKey, branch, jobName, skipIntegrationTest, releaseProductStatus);
+     
+        http.onreadystatechange=(e)=>{
+         console.log(`response text: ${http.responseText}`)
+         }
+         bot.reply(message, `Sure, release is started. Pls follow the link below from futher information ${urlRoute}. BTW don't worry is in UAT.`);
+        }
 })
 
-function triggerJenkinsJob(projectKey, projectVersion, jenkinsKey, branch, jobName) {
+function getReleaseProductStatusByAlias(alias) {
+    var releaseProductStatuses = new Map();
+        releaseProductStatuses.set("internal","INTERNAL_ONLY");
+        releaseProductStatuses.set("Internal","INTERNAL_ONLY");
+        releaseProductStatuses.set("INTERNAL","INTERNAL_ONLY");
+        releaseProductStatuses.set("pilot", 'PILOT');
+        releaseProductStatuses.set("Pilot", 'PILOT');
+        releaseProductStatuses.set("PILOT", 'PILOT');
+        releaseProductStatuses.set("ga candidate", 'GA_Candidate');
+        releaseProductStatuses.set("gaCandidate", 'GA_Candidate');
+        releaseProductStatuses.set("Ga Candidate", 'GA_Candidate');
+        releaseProductStatuses.set("Ga", 'GA_Release');
+        releaseProductStatuses.set( "GA", 'GA_Release');
+        releaseProductStatuses.set("ga", 'GA_Release');
+        releaseProductStatuses.set("Ga Release", 'GA_Release');
+        releaseProductStatuses.set("GA_Release", 'GA_Release');
+        releaseProductStatuses.set("GA Release", 'GA_Release');
+    
+    return releaseProductStatuses.get(alias);
+}
+
+function triggerJenkinsJob(projectKey, projectVersion, jenkinsKey, branch, jobName, skipIntegrationTest, releaseProductStatus) {
+
     const urlRoute = `http://deb-jenkins-prd.ullink.lan/job/${jobName}/`;
-    const url = `http://deb-jenkins-prd.ullink.lan/job/${jobName}/buildWithParameters?token=Rbot_trigger&PROJECT_KEY=${projectKey}&PROJECT_VERSION=${projectVersion}&JENKINS_KEY=${jenkinsKey}&JENKINS_BRANCH=${branch}`;
+    const url = `http://deb-jenkins-prd.ullink.lan/job/${jobName}/buildWithParameters?token=Rbot_trigger&PROJECT_KEY=${projectKey}&PROJECT_VERSION=${projectVersion}&JENKINS_KEY=${jenkinsKey}&JENKINS_BRANCH=${branch}&SKIP_INTEGRATION_TESTS=${skipIntegrationTest}&RELEASE_PRODUCT_STATUS=${releaseProductStatus}`;
     var XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
     var http = new XMLHttpRequest();
     http.open("GET", url);
