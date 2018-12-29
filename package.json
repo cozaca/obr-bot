@@ -4,8 +4,7 @@
   "description": "The awesomest bot ever.",
   "main": "index.js",
   "scripts": {
-    "startUat": "set TOKEN=xoxb-512218193478-511240589860-8QrPXuMIThuXnUwwBBqguSZH&&set MODE=test&&node index.js",
-    "startProd": "set TOKEN=xoxb-512218193478-511240589860-8QrPXuMIThuXnUwwBBqguSZH&&node index.js",
+    "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

@@ -42,12 +42,12 @@ if (process.env.MONGOLAB_URI) {
 /**
  * Are being run as an app or a custom integration? The initialization will differ, depending
  */
-
-console.log(`Pre-start logs: token =${process.env.TOKEN}, slacktoken = ${process.env.SLACK_TOKEN}, clientID = ${process.env.CLIENT_ID}`)
-if (process.env.TOKEN || process.env.SLACK_TOKEN) {
+var config = require('./config');
+console.log(`Pre-start logs: token =${config.token}, slacktoken = ${process.env.SLACK_TOKEN}, clientID = ${process.env.CLIENT_ID}`)
+if (config.token || process.env.SLACK_TOKEN) {
     //Treat this as a custom integration
     var customIntegration = require('./lib/custom_integrations');
-    var token = (process.env.TOKEN) ? process.env.TOKEN : process.env.SLACK_TOKEN;
+    var token = (config.token) ? config.token : process.env.SLACK_TOKEN;
     var controller = customIntegration.configure(token, config, onInstallation);
 } else if (process.env.CLIENT_ID && process.env.CLIENT_SECRET && process.env.PORT) {
     //Treat this as an app
@@ -104,7 +104,7 @@ controller.hears([`pls release`,
     var branch = new String(message.text).match(/(?<=branch \()(.*?)(?=\s*\))/)[0];
 
     var jobName = `${jenkinsKey}-releases`;
-    if(process.env.MODE === 'test') {
+    if(config.mode === 'uat') {
         jobName = 'obr-test'
     }
 
