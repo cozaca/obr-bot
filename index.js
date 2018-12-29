@@ -148,7 +148,12 @@ controller.hears([`pls release`,
         http.onreadystatechange=(e)=>{
          console.log(`response text: ${http.responseText}`)
          }
-         bot.reply(message, `Sure, release is started. Pls follow the link below from futher information ${urlRoute}. BTW don't worry is in UAT.`);
+         var replyMessage = `Sure, release is started. Pls follow the link below from futher information ${urlRoute}`;
+         if(config.mode === 'uat')
+         {
+            replyMessage = replyMessage + 'BTW don\'t worry is in UAT.';
+         }
+         bot.reply(message, replyMessage);
         }
 })
 
