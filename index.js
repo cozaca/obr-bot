@@ -91,7 +91,7 @@ controller.hears('hello', 'direct_message', function (bot, message) {
     bot.reply(message, 'Houdy! How can I help you?');
 });
 
-controller.hears([`pls release extension`,
+controller.hears([`pls release`,
                   "please release",
                   "could you please release"], 
                    ["direct_message", "message.channels"], function(bot, message) {
@@ -103,23 +103,35 @@ controller.hears([`pls release extension`,
     var projectVersion = new String(message.text).match(/(?<=version \()(.*?)(?=\s*\))/)[0];
     var branch = new String(message.text).match(/(?<=branch \()(.*?)(?=\s*\))/)[0];
 
+    var jobName = `${jenkinsKey}-releases`;
+    if(process.env.MODE === 'test') {
+        jobName = 'obr-test'
+    }
+
+    console.info(`JobName = ${jobName}`)
+
     if(projectKey === null || projectKey === '') {
-        projectKey = new String(message.text).matchreplace(/(?<=jira key \()(.*?)(?=\s*\))/)[0];
+        projectKey = new String(message.text).match(/(?<=jira key \()(.*?)(?=\s*\))/);
     }
   
    console.info(`message is ${textMessage} \n jenkinsKey = ${jenkinsKey}, projectKey = ${projectKey}, projectVersion = ${projectVersion}, branch = ${branch}`)
 
-   const urlRoute ="http://deb-jenkins-prd.ullink.lan/job/obr-test/"
-   const url =  `http://deb-jenkins-prd.ullink.lan/job/obr-test/buildWithParameters?token=Rbot_trigger&PROJECT_KEY=${projectKey}&PROJECT_VERSION=${projectVersion}&JENKINS_KEY=${jenkinsKey}&JENKINS_BRANCH=${branch}`
-   var XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
-   var http = new XMLHttpRequest();
-   http.open("GET", url);
-   http.send();
-   console.info(`Triggering the job : ${url}`)
+   var { http, urlRoute } = triggerJenkinsJob(projectKey, projectVersion, jenkinsKey, branch, jobName);
 
    http.onreadystatechange=(e)=>{
-    console.log(http.responseText)
+    console.log(`response text: ${http.responseText}`)
     }
-    bot.reply(message, `Sure, release is started. Pls follow the link below from futher information ${urlRoute}. BTW don't worry is in UAT.`)
+    bot.reply(message, `Sure, release is started. Pls follow the link below from futher information ${urlRoute}. BTW don't worry is in UAT.`);
 })
+
+function triggerJenkinsJob(projectKey, projectVersion, jenkinsKey, branch, jobName) {
+    const urlRoute = `http://deb-jenkins-prd.ullink.lan/job/${jobName}/`;
+    const url = `http://deb-jenkins-prd.ullink.lan/job/${jobName}/buildWithParameters?token=Rbot_trigger&PROJECT_KEY=${projectKey}&PROJECT_VERSION=${projectVersion}&JENKINS_KEY=${jenkinsKey}&JENKINS_BRANCH=${branch}`;
+    var XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
+    var http = new XMLHttpRequest();
+    http.open("GET", url);
+    http.send();
+    console.info(`Triggering the job : ${url}`);
+    return { http, urlRoute };
+}
 
