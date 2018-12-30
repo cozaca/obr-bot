@@ -97,7 +97,7 @@ controller.hears(['pls tell something about you',
                   'obr',
                   'what can you do',
                   'help'], ["direct_message", "direct_mention"], function (bot, message) {
-    bot.reply(message, 'Houdy! I am the OBR bot. My name is R-bot. I can release whatever extension you want if you follow two basic steps.\n'+
+    bot.reply(message, 'Houdy! I am the OBR bot. My name is R-bot. I can release whatever extension you want, if you follow two basic steps.\n'+
                         '*1*. Make sure that you have applied obr pipeline to your extension. If you don\'t have that please do so following\n'+
                         '     the steps from this page: https://itivitinet.itiviti.com/pages/viewpage.action?pageId=156109745 \n'+
                         '*2*. If you want to release you can simply tell me what to do by: \n' +
@@ -114,14 +114,14 @@ controller.hears([`pls release`,
                    ["direct_message", "direct_mention"], function(bot, message) {
                        
 
-    var textMessage = message.text
-    var jenkinsKey = new String(message.text).match(/(?<=extension \()(.*?)(?=\s*\))/)[0];
-    var projectKey = new String(message.text).match(/(?<=jira \()(.*?)(?=\s*\))/)[0];
-    var projectVersion = new String(message.text).match(/(?<=version \()(.*?)(?=\s*\))/)[0];
-    var branch = new String(message.text).match(/(?<=branch \()(.*?)(?=\s*\))/)[0];
-    var skipIntegrationTest = /ignoring/.test(message.text) || /ignore/.test(message.text) || /skip/.test(message.text) || /skipping/.test(message.test);
-    var aliasRpd = new String(message.text).match(/(?<=as \()(.*?)(?=\s*\))/)[0];
-    var releaseProductStatus = getReleaseProductStatusByAlias(aliasRpd);
+    var { jenkinsKey,
+          projectKey,
+          textMessage,
+          projectVersion,
+          branch,
+          aliasRpd,
+          releaseProductStatus,
+          skipIntegrationTest } = readProperties(message);
 
     var jobName = `${jenkinsKey}-releases`;
     if(config.mode === 'uat') {
@@ -145,10 +145,14 @@ controller.hears([`pls release`,
     
         var { http, urlRoute } = triggerJenkinsJob(projectKey, projectVersion, jenkinsKey, branch, jobName, skipIntegrationTest, releaseProductStatus);
      
+        var replyMessage = `Sure, release is started. Pls follow the link below from futher information ${urlRoute}`;
         http.onreadystatechange=(e)=>{
-         console.log(`response text: ${http.responseText}`)
+         console.log(`response text: ${http.responseText} and status ${http.status==404}`)
+         if(http.status == 404 || http.responseText !== '') {
+             replyMessage = `Job not found. Pls make sure that your OBR job name was properly configured.`;
+           }
          }
-         var replyMessage = `Sure, release is started. Pls follow the link below from futher information ${urlRoute}`;
+        
          if(config.mode === 'uat')
          {
             replyMessage = replyMessage + 'BTW don\'t worry is in UAT.';
@@ -156,6 +160,23 @@ controller.hears([`pls release`,
          bot.reply(message, replyMessage);
         }
 })
+
+function readProperties(message) {
+    var textMessage = message.text;
+    var jenkinsKeyArray = new String(message.text).match(/(?<=extension \()(.*?)(?=\s*\))/);
+    var projectKeyArray = new String(message.text).match(/(?<=jira \()(.*?)(?=\s*\))/);
+    var projectVersionArray = new String(message.text).match(/(?<=version \()(.*?)(?=\s*\))/);
+    var branchArray = new String(message.text).match(/(?<=branch \()(.*?)(?=\s*\))/);
+    var skipIntegrationTest = /ignoring/.test(message.text) || /ignore/.test(message.text) || /skip/.test(message.text) || /skipping/.test(message.test);
+    var aliasRpdArray = new String(message.text).match(/(?<=as \()(.*?)(?=\s*\))/);
+    var jenkinsKey = jenkinsKeyArray == null || jenkinsKeyArray.length < 1 ? null : jenkinsKeyArray[0];
+    var projectKey = projectKeyArray == null || projectKeyArray.length < 1 ? null : projectKeyArray[0];
+    var projectVersion = projectVersionArray == null || projectVersionArray.length < 1 ? null : projectVersionArray[0];
+    var branch = branchArray == null || branchArray.length < 1 ? null : branchArray[0];
+    var aliasRpd = aliasRpdArray == null || aliasRpdArray.length < 1 ? null : aliasRpdArray[0];
+    var releaseProductStatus = getReleaseProductStatusByAlias(aliasRpd);
+    return { jenkinsKey, projectKey, textMessage, projectVersion, branch, aliasRpd, releaseProductStatus, skipIntegrationTest };
+}
 
 function getReleaseProductStatusByAlias(alias) {
     var releaseProductStatuses = new Map();
